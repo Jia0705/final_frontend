@@ -17,17 +17,29 @@ function Login() {
   const handleFormSubmit = async () => {
     // check for error
     if (!email || !password) {
-      toast.error("Please fill up all the fields");
-    } else {
-      // trigger the API
+      toast.error("Please fill up all the fields.");
+      return;
+    }
+
+    try {
+      // trigger the login API
       const userData = await login(email, password);
-      // set cookies
+
+      if (!userData) {
+        toast.error("Invalid email or password.");
+        return;
+      }
+
+      // set cookies with the returned user data
       setCookie("currentUser", userData, {
         maxAge: 60 * 60 * 24 * 30, // second * minutes * hours * days
       });
-      // redirect user back to home
+
+      // redirect user to home
       navigate("/");
-      toast.success("Welcome back! You have successfully login.");
+      toast.success("Welcome back! You have successfully logged in.");
+    } catch (error) {
+      toast.error(error?.message || "An error occurred during login.");
     }
   };
 

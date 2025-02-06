@@ -1,27 +1,33 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Container, Button, Typography, Box, TextField, IconButton } from "@mui/material";
+import {
+  Container,
+  Button,
+  Typography,
+  Box,
+  TextField,
+  IconButton,
+  FormControl,
+  Select,
+  MenuItem,
+  InputLabel,
+} from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import Card from "@mui/material/Card";
 import CardMedia from "@mui/material/CardMedia";
 import CardContent from "@mui/material/CardContent";
 import CardActions from "@mui/material/CardActions";
-import { InputLabel, MenuItem, FormControl, Select } from "@mui/material";
-import { ArrowRight, ArrowLeft, BookmarkBorder, Bookmark } from "@mui/icons-material";
-import Header from "../../components/Header";
-import { toast } from "sonner";
+import { BookmarkBorder, Bookmark } from "@mui/icons-material";
 import { useCookies } from "react-cookie";
+import { toast } from "sonner";
 import { API_URL } from "../../constants";
 
 import { getProducts } from "../../utils/api_products";
 import { getCategories } from "../../utils/api_categories";
 import { deleteProduct } from "../../utils/api_products";
-import {
-  getBookmarks,
-  addBookmark,
-  removeBookmark,
-} from "../../utils/api_bookmark";
-import { isAdmin, getUserToken } from "../../utils/api_auth";
+import { getBookmarks, addBookmark, removeBookmark } from "../../utils/api_bookmark";
+import { isAdmin, isUserLoggedIn, getUserToken } from "../../utils/api_auth";
+import Header from "../../components/Header"; 
 
 function Products() {
   const navigate = useNavigate();
@@ -32,42 +38,35 @@ function Products() {
   const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
-  const [bookmarkedProducts, setBookmarkedProducts] = useState([]); // Store bookmarked products
+  const [bookmark, setBookmark] = useState([]);
 
   useEffect(() => {
-    getProducts(category, page).then((data) => {
-      setProducts(data);
-    });
+    getProducts(category, page).then(setProducts);
   }, [category, page]);
 
   useEffect(() => {
-    getCategories().then((data) => {
-      setCategories(data);
-    });
+    getCategories().then(setCategories);
   }, []);
 
   useEffect(() => {
-    if (cookies.currentUser) {
+    if (isUserLoggedIn(cookies)) {
       getBookmarks(cookies.currentUser._id).then((data) => {
-        setBookmarkedProducts(data.products || []);
+        setBookmark(data.products || []);
       });
     }
   }, [cookies]);
 
-  // Handle Bookmark Toggle
   const handleBookmark = async (productId) => {
     const userId = cookies.currentUser._id;
     try {
-      if (bookmarkedProducts.includes(productId)) {
-        // Remove from bookmarks if already bookmarked
+      if (bookmark.includes(productId)) {
         await removeBookmark(userId, productId);
-        setBookmarkedProducts(bookmarkedProducts.filter((id) => id !== productId));
+        setBookmark(bookmark.filter((id) => id !== productId));
       } else {
-        // Add to bookmarks if not already bookmarked
         await addBookmark(userId, productId);
-        setBookmarkedProducts([...bookmarkedProducts, productId]);
+        setBookmark([...bookmark, productId]);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to update bookmark.");
     }
   };
@@ -79,12 +78,10 @@ function Products() {
   };
 
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Are you sure you want to delete this product?");
-    if (confirmed) {
+    if (window.confirm("Are you sure you want to delete this product?")) {
       const deleted = await deleteProduct(id, token);
       if (deleted) {
-        const latestProducts = await getProducts(category, page);
-        setProducts(latestProducts);
+        setProducts(await getProducts(category, page));
         toast.success("Product deleted successfully");
       } else {
         toast.error("Failed to delete product");
@@ -95,10 +92,10 @@ function Products() {
   return (
     <Container>
       <Header />
-      <Box display="flex" justifyContent="space-between" alignItems="center">
+      <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ marginBottom: "20px" }}>
         <Typography variant="h4">Products</Typography>
         {isAdmin(cookies) && (
-          <Button LinkComponent={Link} to="/products/new" variant="contained" color="success">
+          <Button component={Link} to="/products/new" variant="contained" color="success">
             Add New
           </Button>
         )}
@@ -112,14 +109,10 @@ function Products() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-
         <FormControl sx={{ minWidth: 120 }}>
-          <InputLabel id="demo-simple-select-label">Category</InputLabel>
+          <InputLabel>Category</InputLabel>
           <Select
-            labelId="demo-simple-select-label"
-            id="demo-simple-select"
             value={category}
-            label="category"
             onChange={(event) => {
               setCategory(event.target.value);
               setPage(1);
@@ -149,25 +142,28 @@ function Products() {
                     backgroundColor: getStockColor(product.stock),
                   }}
                 >
-                  {product.image ? (
-                    <CardMedia component="img" image={`${API_URL}/${product.image}`} />
-                  ) : null}
+                  {product.image && <CardMedia component="img" image={`${API_URL}/${product.image}`} />}
                   <CardContent>
                     <Box display="flex" justifyContent="space-between" alignItems="center">
                       <Typography variant="h6">{product.name}</Typography>
-                      <IconButton onClick={() => handleBookmark(product._id)}>
-                        {bookmarkedProducts.includes(product._id) ? (
-                          <Bookmark sx={{ color: "#ff9800" }} />
-                        ) : (
-                          <BookmarkBorder sx={{ color: "#1976d2" }} />
-                        )}
-                      </IconButton>
+
+                      {/* Hide bookmark for guests */}
+                      {isUserLoggedIn(cookies) && (
+                        <IconButton onClick={() => handleBookmark(product._id)}>
+                          {bookmark.includes(product._id) ? (
+                            <Bookmark sx={{ color: "#ff9800" }} />
+                          ) : (
+                            <BookmarkBorder sx={{ color: "#1976d2" }} />
+                          )}
+                        </IconButton>
+                      )}
                     </Box>
-                    <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
-                      <Typography color="green" fontWeight="bold">${product.price}</Typography>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography color="green" fontWeight="bold">
+                        ${product.price}
+                      </Typography>
                       <Typography
                         sx={{
-                          display: "inline-block",
                           padding: "2px 8px",
                           backgroundColor: "#f8f9fa",
                           borderRadius: "12px",
@@ -177,7 +173,9 @@ function Products() {
                         }}
                         color="textSecondary"
                       >
-                        {product.category?.name || ""}
+                       {product.category && product.category.name
+                        ? product.category.name
+                        : ""}
                       </Typography>
                     </Box>
                     <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>
@@ -196,27 +194,14 @@ function Products() {
                       }}
                       onClick={() => navigate(`/products/${product._id}/comment`)}
                     >
-                      Check in Detail
+                      Check
                     </Button>
                     {isAdmin(cookies) && (
-                      <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
-                        <Button
-                          variant="outlined"
-                          LinkComponent={Link}
-                          to={`/products/${product._id}/edit`}
-                          color="primary"
-                          size="small"
-                          sx={{ textTransform: "none", marginRight: "8px" }}
-                        >
+                      <Box display="flex" justifyContent="space-between">
+                        <Button variant="outlined" component={Link} to={`/products/${product._id}/edit`} size="small">
                           Edit
                         </Button>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          size="small"
-                          sx={{ textTransform: "none" }}
-                          onClick={() => handleDelete(product._id)}
-                        >
+                        <Button variant="outlined" color="error" size="small" onClick={() => handleDelete(product._id)}>
                           Delete
                         </Button>
                       </Box>
@@ -226,26 +211,11 @@ function Products() {
               </Grid>
             ))
         ) : (
-          <Grid size={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="body1" align="center">
-                  No product found.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+          <Typography variant="body1" align="center" sx={{ width: "100%" }}>
+            No product found.
+          </Typography>
         )}
       </Grid>
-      <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"} sx={{ padding: "20px 0 40px 0" }}>
-        <Button variant="contained" color="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>
-          <ArrowLeft /> Prev
-        </Button>
-        <span>Page {page}</span>
-        <Button variant="contained" color="secondary" disabled={products.length === 0} onClick={() => setPage(page + 1)}>
-          Next <ArrowRight />
-        </Button>
-      </Box>
     </Container>
   );
 }

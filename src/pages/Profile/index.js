@@ -1,78 +1,153 @@
 import { useState, useEffect } from "react";
-import { Container, Button, Typography, Box, TextField, Card, CardContent } from "@mui/material";
 import { useCookies } from "react-cookie";
-import { toast } from "sonner";
+import { getUserToken, isUserLoggedIn } from "../../utils/api_auth";
 import { getUserProfile, updateUserProfile } from "../../utils/api_profile";
+import {
+  Button,
+  TextField,
+  Typography,
+  Box,
+  Container,
+  Card,
+  CardContent,
+} from "@mui/material";
+import { toast } from "sonner";
+import Header from "../../components/Header";
+import { useNavigate } from "react-router-dom";
 
-function UserProfile() {
-  const [cookies] = useCookies(["currentUser"]);
+function Profile() {
+  const [cookies, setCookie] = useCookies(["currentUser"]);
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
-    if (!cookies.currentUser?._id) {
+    if (!isUserLoggedIn(cookies)) {
+      toast.error("You must be logged in to view your profile.");
+      navigate("/login");
+      return;
+    }
+
+    const token = getUserToken(cookies);
+    const userId = cookies.currentUser?._id;
+
+    if (!token || !userId) {
       toast.error("You must be logged in to view your profile.");
       return;
     }
 
-    // Fetch user profile
-    getUserProfile(cookies.currentUser._id, cookies.currentUser?.token)
+    getUserProfile(userId, token)
       .then((userData) => {
         if (userData) {
           setName(userData.name);
           setEmail(userData.email);
         }
       })
-      .catch(() => toast.error("Failed to load profile."));
-  }, [cookies]);
+      .catch(() => {
+        toast.error("Failed to load profile.");
+      });
+  }, [cookies, navigate]);
 
   const handleUpdateProfile = async () => {
-    if (!name.trim() || !email.trim()) {
-      return toast.error("Name and email cannot be empty.");
+    // Validate input fields
+    if (!name || !oldPassword || !newPassword) {
+      return toast.error(
+        "Name, old password, and new password cannot be empty."
+      );
+    }
+
+    if (oldPassword === newPassword) {
+      return toast.error("New password cannot be the same as old password.");
     }
 
     try {
+      const token = getUserToken(cookies);
+      const userId = cookies.currentUser?._id;
+
+      if (!token || !userId) {
+        toast.error("You must be logged in to update your profile.");
+        return;
+      }
+
       const updatedUser = await updateUserProfile(
-        cookies.currentUser._id,
-        { name, email },
-        cookies.currentUser?.token
+        userId,
+        { name, oldPassword, newPassword },
+        token
       );
 
       if (updatedUser) {
+        // Update the currentUser cookie with the new profile data
+        setCookie("currentUser", {
+          ...cookies.currentUser,
+          name: updatedUser.name,
+          email: updatedUser.email,
+        });
+
         toast.success("Profile updated!");
+
+        // Redirect to the homepage
+        navigate("/");
+
+        setOldPassword("");
+        setNewPassword("");
       }
-    } catch {
+    } catch (error) {
       toast.error("Profile update failed.");
     }
   };
 
   return (
-    <Container sx={{ marginTop: 4 }}>
-      <Card sx={{ padding: 2, boxShadow: 3, maxWidth: 500, margin: "auto" }}>
+    <Container>
+      <Header title="User Profile" />
+      <Card sx={{ padding: 2, maxWidth: 500, margin: "auto" }}>
         <CardContent>
-          <Typography variant="h4">User Profile</Typography>
-
           <Box sx={{ marginTop: 2 }}>
+            {/* Name */}
             <TextField
               fullWidth
               label="Name"
-              variant="outlined"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(event) => setName(event.target.value)}
               sx={{ marginBottom: 2 }}
             />
+
+            {/* Email */}
             <TextField
               fullWidth
               label="Email"
-              variant="outlined"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              InputProps={{ readOnly: true }}
+              sx={{
+                marginBottom: 2,
+                backgroundColor: "#f5f5f5",
+              }}
+            />
+
+            {/* Old Password */}
+            <TextField
+              fullWidth
+              label="Old Password"
+              type="password"
+              value={oldPassword}
+              onChange={(event) => setOldPassword(event.target.value)}
               sx={{ marginBottom: 2 }}
             />
+
+            {/* New Password */}
+            <TextField
+              fullWidth
+              label="New Password"
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              sx={{ marginBottom: 2 }}
+            />
+
             <Button
               variant="contained"
               color="primary"
-              sx={{ width: "100%" }}
               onClick={handleUpdateProfile}
             >
               Update Profile
@@ -84,4 +159,4 @@ function UserProfile() {
   );
 }
 
-export default UserProfile;
+export default Profile;

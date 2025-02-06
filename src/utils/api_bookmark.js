@@ -2,41 +2,56 @@ import axios from "axios";
 import { toast } from "sonner";
 import { API_URL } from "../constants";
 
-// Get all bookmarks
-export const getBookmarks = async (userId) => {
+// get bookmarks 
+export const getBookmarks = async (userId, token) => {
   try {
-    const response = await axios.get(`${API_URL}/bookmarks?user=${userId}`);
-    return response.data;
-  } catch (error) {
-    const errorMessage = error.response?.data?.error || "Error fetching bookmarks.";
-    toast.error(errorMessage);
-    console.error("Error fetching bookmarks:", error);
-  }
-};
-
-// Add bookmark
-export const addBookmark = async (userId, productId) => {
-  try {
-    const response = await axios.post(`${API_URL}/bookmarks`, {
-      user: userId,
-      product: productId,
+    const response = await axios.get(API_URL + "/bookmarks?user=" + userId, {
+      headers: {
+        Authorization: "Bearer " + token, 
+      },
     });
-    return response.data;
+    return response.data; 
   } catch (error) {
-    const errorMessage = error.response?.data?.error || "Error adding bookmark.";
-    toast.error(errorMessage);
-    console.error("Error adding bookmark:", error);
+    toast.error(error.response.data.error);
   }
 };
 
-// Remove a product from bookmarks
-export const removeBookmark = async (userId, productId) => {
+// add bookmark
+export const addBookmark = async (userId, productId, token) => {
   try {
-    const response = await axios.delete(`${API_URL}/bookmarks/${productId}?user=${userId}`);
-    return response.data;
+    const response = await axios.post(
+      API_URL + "/bookmarks",
+      { 
+        user: userId, 
+        product: productId
+      },
+      {
+        headers: {
+          Authorization: "Bearer " + token, 
+        },
+      }
+    );
+    return response.data; 
   } catch (error) {
-    const errorMessage = error.response?.data?.error || "Error removing bookmark.";
-    toast.error(errorMessage);
-    console.error("Error removing bookmark:", error);
+    toast.error(error.response.data.error);
+  }
+};
+
+// remove bookmark
+export const removeBookmark = async (
+  userId,
+  productId,
+  token
+  ) => {
+  try {
+    const response = await axios.delete(API_URL + "/bookmarks/" + productId, {
+      headers: {
+        Authorization: "Bearer " + token, 
+      },
+      data: { user: userId }, // Pass userId in the request body (for DELETE)
+    });
+    return response.data; 
+  } catch (error) {
+    toast.error(error.response.data.error);
   }
 };

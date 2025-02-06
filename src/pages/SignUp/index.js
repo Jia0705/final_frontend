@@ -23,17 +23,24 @@ function SignUp() {
     } else if (password !== confirmPassword) {
       toast.error("Your password does not match");
     } else {
-      // trigger the API
-      const userData = await signup(name, email, password);
-      // set cookies
-      setCookie("currentUser", userData, {
-        maxAge: 60 * 60 * 24 * 30, // second * minutes * hours * days
-      });
-      // redirect user back to home
-      navigate("/");
-      toast.success("You have successfully signed up. Happy shopping!");
+      try {
+        // trigger the API
+        const userData = await signup(name, email, password);
+        if (userData) {
+          // set cookies
+          setCookie("currentUser", userData, {
+            maxAge: 60 * 60 * 24 * 30, // second * minutes * hours * days
+          });
+          // redirect user back to home
+          navigate("/");
+          toast.success("You have successfully signed up. Happy shopping!");
+        }
+      } catch (error) {
+        toast.error("Signup failed. Please try again.");
+      }
     }
   };
+  
 
   return (
     <Container>
