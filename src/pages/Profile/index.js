@@ -51,7 +51,7 @@ function Profile() {
   }, [cookies, navigate]);
 
   const handleUpdateProfile = async () => {
-    // Validate input fields
+    // check error
     if (!name || !oldPassword || !newPassword) {
       return toast.error(
         "Name, old password, and new password cannot be empty."
@@ -78,7 +78,7 @@ function Profile() {
       );
 
       if (updatedUser) {
-        // Update the currentUser cookie with the new profile data
+        // update the currentUser cookie with the new profile data
         setCookie("currentUser", {
           ...cookies.currentUser,
           name: updatedUser.name,
@@ -86,8 +86,6 @@ function Profile() {
         });
 
         toast.success("Profile updated!");
-
-        // Redirect to the homepage
         navigate("/");
 
         setOldPassword("");

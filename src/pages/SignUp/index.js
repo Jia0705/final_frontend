@@ -33,7 +33,7 @@ function SignUp() {
           });
           // redirect user back to home
           navigate("/");
-          toast.success("You have successfully signed up. Happy shopping!");
+          toast.success("You have successfully signed up.");
         }
       } catch (error) {
         toast.error("Signup failed. Please try again.");
